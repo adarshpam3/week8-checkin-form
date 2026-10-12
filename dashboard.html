@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Week 8 Coach Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ============ PASSCODE ============ -->
+<div class="wrap" id="lockView">
+  <header>
+    <div class="eyebrow">Coach dashboard · Week 8</div>
+    <h1>Coach access</h1>
+    <p class="lede">Enter your coach passcode to see your clients' check-ins.</p>
+  </header>
+  <section class="panel">
+    <form class="lockform" id="lockForm" novalidate>
+      <label for="pw">Passcode</label>
+      <input type="password" id="pw" autocomplete="current-password">
+      <p class="err" id="lockErr" hidden></p>
+      <div class="row">
+        <button class="btn" type="submit" id="unlockBtn">Open dashboard</button>
+        <a class="btn ghost" href="/" style="text-decoration:none">Back to the form</a>
+      </div>
+    </form>
+  </section>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="wrap wide" id="dashView" hidden>
+  <header>
+    <div class="eyebrow">Coach dashboard · Week 8</div>
+    <h1>Week 8 check-ins</h1>
+    <div class="row" style="justify-content:space-between">
+      <p class="lede" id="dashSub">Loading…</p>
+      <div class="row">
+        <button class="btn sm ghost" type="button" id="refresh">Refresh</button>
+        <button class="btn sm ghost" type="button" id="exportCsv" hidden>Export CSV</button>
+        <button class="btn sm ghost" type="button" id="lockDash">Lock dashboard</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="empty" id="dashEmpty" hidden>
+    <h3>No check-ins yet</h3>
+    <p>When a client sends the form, their answers show up here. Press Refresh to check for new ones.</p>
+  </div>
+
+  <div id="dashBody" hidden style="display:flex;flex-direction:column;gap:28px">
+    <div class="kpis">
+      <div class="kpi"><span class="k">Responses</span><span class="v" id="kN">0</span><span class="s">check-ins received</span></div>
+      <div class="kpi"><span class="k">Avg happiness</span><span class="v" id="kAvg">–</span><span class="s">out of 10</span></div>
+      <div class="kpi attn"><span class="k">Need a follow-up</span><span class="v" id="kAttn">0</span><span class="s">low score or a red flag</span></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h3>Happiness score</h3>
+        <div class="cols" id="chScore" role="img" aria-label="Count of clients per score from 1 to 10"></div>
+        <div class="colx" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+      </div>
+      <div class="card"><h3>Hardest part</h3><ul class="bars" id="chHard"></ul></div>
+      <div class="card"><h3>Do more of</h3><ul class="bars" id="chMore"></ul></div>
+      <div class="card"><h3>Workouts feel</h3><ul class="bars" id="chTraining"></ul></div>
+      <div class="card"><h3>Meal plan</h3><ul class="bars" id="chDiet"></ul></div>
+      <div class="card"><h3>Check-ins and calls</h3><ul class="bars" id="chSupport"></ul></div>
+    </div>
+
+    <section style="display:flex;flex-direction:column;gap:14px">
+      <div class="listhead">
+        <h2>Every response</h2>
+        <div class="seg" role="group" aria-label="Filter responses">
+          <button type="button" id="fAll" aria-pressed="true">All</button>
+          <button type="button" id="fAttn" aria-pressed="false">Need a follow-up</button>
+        </div>
+      </div>
+      <div class="resp" id="list"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const OPTS={
+    hard:["Sticking to the diet","Finding time to train","Sleep","Weekends and eating out","Work stress","Motivation","Daily check-ins"],
+    training:["Too easy","Just right","Too hard","Getting boring"],
+    diet:["Easy, fits my life","Mostly fine","Struggling with it"],
+    support:["Super useful, keep as is","Useful, could be shorter","Want more contact","Feels like a chore"],
+    more:["Form checks on your lifts","More quick recipes","Eating-out guide","Sleep and stress help","Push me harder","Faster replies"]
+  };
+  const WARN_OPTS=new Set(["Too hard","Getting boring","Struggling with it","Feels like a chore"]);
+  let passcode='',rows=[],filter='all';
+
+  const store={
+    get(){try{return sessionStorage.getItem('coachPasscode')||''}catch(e){return ''}},
+    set(v){try{v?sessionStorage.setItem('coachPasscode',v):sessionStorage.removeItem('coachPasscode')}catch(e){}}
+  };
+  const lockErr=m=>{$('lockErr').textContent=m;$('lockErr').hidden=!m};
+
+  async function api(method,query){
+    const res=await fetch('/api/checkins'+(query||''),{method,headers:{'x-coach-passcode':passcode}});
+    if(res.status===401){const e=new Error('unauthorized');e.unauth=true;throw e}
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    return res.json();
+  }
+  async function load(){
+    $('dashSub').textContent='Loading…';
+    try{
+      const data=await api('GET');
+      rows=(data.checkins||[]).map(c=>({...c.answers,id:c.id,submittedAt:c.submittedAt}));
+      renderDash();return true;
+    }catch(e){
+      if(e.unauth){lock("That passcode isn't right.");return false}
+      $('dashSub').textContent="Couldn't load check-ins. Press Refresh to try again.";return true;
+    }
+  }
+  function lock(msg){
+    passcode='';store.set('');rows=[];$('list').innerHTML='';
+    $('dashView').hidden=true;$('lockView').hidden=false;lockErr(msg||'');$('pw').value='';$('pw').focus();
+  }
+  async function unlock(code){
+    passcode=code;
+    $('lockView').hidden=true;$('dashView').hidden=false;window.scrollTo({top:0});
+    if(await load())store.set(code);
+  }
+
+  $('lockForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const code=$('pw').value;
+    if(!code){lockErr('Enter your passcode.');return}
+    const b=$('unlockBtn');b.disabled=true;
+    try{await unlock(code)}finally{b.disabled=false}
+  });
+  $('lockDash').addEventListener('click',()=>lock(''));
+  $('refresh').addEventListener('click',load);
+
+  /* ---------- render ---------- */
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const flagsOf=r=>{
+    const f=[];
+    if(r.rating&&r.rating<=6)f.push('Score '+r.rating+'/10');
+    [r.training,r.diet,r.support].forEach(x=>{if(WARN_OPTS.has(x))f.push(x)});
+    return f;
+  };
+  const nameOf=r=>r.name||'Unnamed client';
+  const fmtDate=iso=>{try{return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
+  function asText(d){
+    const line=(q,a)=>a?`${q}\n${a}\n`:'';
+    const join=(...p)=>p.flat().filter(Boolean).join('. ');
+    return [`WEEK 8 CHECK-IN · ${nameOf(d)}`,'',
+      line('Overall score:',d.rating?d.rating+'/10':''),
+      line('Biggest win:',d.win),
+      line('Hardest part:',join((d.hard||[]).join(', '),d.hard_note)),
+      line('Workouts feel:',d.training),
+      line('Meal plan:',join(d.diet,d.diet_note)),
+      line('Check-ins and calls:',d.support),
+      line('Do more of:',join((d.more||[]).join(', '),d.more_note)),
+      line('Goal for the next 4 weeks:',d.goal),
+      line('Anything else:',d.else_)
+    ].join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+  function bars(el,opts,counts,total){
+    el.innerHTML=opts.map(o=>{
+      const n=counts[o]||0,pct=total?Math.round(n/total*100):0;
+      return `<li title="${esc(o)}: ${n} of ${total} (${pct}%)"><span class="lab">${esc(o)}</span><span class="n">${n}</span><span class="tr"><i class="${WARN_OPTS.has(o)?'w':''}" style="width:${pct}%"></i></span></li>`;
+    }).join('');
+  }
+  function tally(key){const c={};rows.forEach(r=>{const v=r[key];(Array.isArray(v)?v:[v]).forEach(x=>{if(x)c[x]=(c[x]||0)+1})});return c}
+
+  function renderDash(){
+    const n=rows.length;
+    $('dashEmpty').hidden=n>0;$('dashBody').hidden=n===0;$('exportCsv').hidden=n===0;
+    if(!n){$('dashSub').textContent='No check-ins yet.';return}
+    $('dashSub').textContent=`${n} check-in${n===1?'':'s'} · latest ${fmtDate(rows[0].submittedAt)}`;
+    $('kN').textContent=n;
+    $('kAvg').textContent=(rows.reduce((s,r)=>s+(r.rating||0),0)/n).toFixed(1);
+    $('kAttn').textContent=rows.filter(r=>flagsOf(r).length).length;
+    const sc=Array(11).fill(0);rows.forEach(r=>{if(r.rating>=1&&r.rating<=10)sc[r.rating]++});
+    const max=Math.max(1,...sc.slice(1));
+    $('chScore').innerHTML=sc.slice(1).map((c,i)=>{
+      const h=c/max*100,s=i+1;
+      return `<div class="c" title="Score ${s}: ${c} client${c===1?'':'s'}"><i class="${c?(s<=6?'low':''):'zero'}" style="height:${h}%"></i>${c?`<b style="bottom:calc(${h}% + 4px)">${c}</b>`:''}</div>`;
+    }).join('');
+    bars($('chHard'),OPTS.hard,tally('hard'),n);
+    bars($('chMore'),OPTS.more,tally('more'),n);
+    bars($('chTraining'),OPTS.training,tally('training'),n);
+    bars($('chDiet'),OPTS.diet,tally('diet'),n);
+    bars($('chSupport'),OPTS.support,tally('support'),n);
+    renderList();
+  }
+  function renderList(){
+    const open=new Set([...document.querySelectorAll('#list details[open]')].map(d=>d.dataset.id));
+    const shown=rows.filter(r=>filter==='all'||flagsOf(r).length);
+    if(!shown.length){$('list').innerHTML='<p class="muted" style="margin:0">Nobody needs a follow-up right now.</p>';return}
+    $('list').innerHTML=shown.map(r=>{
+      const fl=flagsOf(r);
+      const field=(k,val)=>val?`<dt>${k}</dt><dd>${esc(val)}</dd>`:'';
+      const j=(...p)=>p.flat().filter(Boolean).join('. ');
+      return `<details class="r" data-id="${esc(r.id)}"${open.has(r.id)?' open':''}>
+        <summary>
+          <span class="score${r.rating<=6?' low':''}" aria-label="Score ${r.rating} of 10">${r.rating||'–'}</span>
+          <span class="who"><strong>${esc(nameOf(r))}</strong>
+            <span class="meta">${esc(r.goal?'Goal: '+r.goal:'No goal given')}</span>
+            ${fl.length?`<span class="flags">${fl.map(x=>`<span class="flag">${esc(x)}</span>`).join('')}</span>`:''}</span>
+          <span class="pill">${esc(fmtDate(r.submittedAt))}</span>
+        </summary>
+        <dl>
+          ${field('Biggest win',r.win)}
+          ${field('Hardest part',j((r.hard||[]).join(', '),r.hard_note))}
+          ${field('Workouts feel',r.training)}
+          ${field('Meal plan',j(r.diet,r.diet_note))}
+          ${field('Check-ins and calls',r.support)}
+          ${field('Do more of',j((r.more||[]).join(', '),r.more_note))}
+          ${field('Goal for next 4 weeks',r.goal)}
+          ${field('Anything else',r.else_)}
+        </dl>
+        <div class="acts row">
+          <button class="btn sm ghost" type="button" data-copy="${esc(r.id)}">Copy as text</button>
+          <button class="btn sm ghost danger" type="button" data-del="${esc(r.id)}">Delete</button>
+          <span class="ok" hidden></span>
+        </div>
+      </details>`;
+    }).join('');
+  }
+  $('list').addEventListener('click',async e=>{
+    const c=e.target.closest('[data-copy]'),d=e.target.closest('[data-del]');
+    if(c){
+      const r=rows.find(x=>x.id===c.dataset.copy);if(!r)return;
+      const ok=c.parentElement.querySelector('.ok');
+      try{navigator.clipboard.writeText(asText(r)).then(()=>{ok.textContent='Copied';ok.hidden=false},()=>{ok.textContent="Couldn't copy";ok.hidden=false})}catch(err){ok.textContent="Couldn't copy";ok.hidden=false}
+    }
+    if(d){
+      if(d.dataset.confirm!=='1'){d.dataset.confirm='1';d.textContent='Click again to delete';return}
+      d.disabled=true;d.textContent='Deleting…';
+      try{await api('DELETE','?id='+encodeURIComponent(d.dataset.del));await load()}
+      catch(err){if(err.unauth)lock("That passcode isn't right.");else{d.disabled=false;d.textContent="Couldn't delete. Try again"}}
+    }
+  });
+  const setFilter=x=>{filter=x;$('fAll').setAttribute('aria-pressed',x==='all');$('fAttn').setAttribute('aria-pressed',x==='attn');renderList()};
+  $('fAll').addEventListener('click',()=>setFilter('all'));
+  $('fAttn').addEventListener('click',()=>setFilter('attn'));
+
+  $('exportCsv').addEventListener('click',()=>{
+    const cols=[['Name',r=>nameOf(r)],['Score',r=>r.rating],['Biggest win',r=>r.win],['Hardest part',r=>(r.hard||[]).join('; ')],['Hardest note',r=>r.hard_note],
+      ['Workouts',r=>r.training],['Meal plan',r=>r.diet],['Meal plan note',r=>r.diet_note],['Check-ins',r=>r.support],['Do more of',r=>(r.more||[]).join('; ')],
+      ['More note',r=>r.more_note],['Goal',r=>r.goal],['Anything else',r=>r.else_],['Submitted',r=>r.submittedAt]];
+    const q=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
+    const csv=[cols.map(c=>q(c[0])).join(',')].concat(rows.map(r=>cols.map(c=>q(c[1](r))).join(','))).join('\r\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
+    a.download='week8-checkins.csv';document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+  });
+
+  const saved=store.get();
+  if(saved)unlock(saved);else $('pw').focus();
+})();
+</script>
+</body>
+</html>

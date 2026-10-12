@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Week 8 Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Coaching check-in · with Adarsh</div>
+    <h1>Two months in. How's it really going?</h1>
+    <p class="lede">You've put in 8 weeks of work. Before we plan the next month, I want your straight feedback. What's working, what's not, and what you want more of from me. Takes about 5 minutes. Be blunt, it only helps you.</p>
+  </header>
+
+  <form id="f" novalidate>
+    <div class="q"><div class="q-head"><span class="num">00</span><label class="t" for="name">Your name</label></div>
+      <input type="text" id="name" placeholder="First name" autocomplete="given-name"></div>
+
+    <h2 class="sec">Where you're at</h2>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">01</span><span>Overall, how happy are you with the coaching so far?</span></span></legend>
+      <div class="scale" data-group="rating"></div>
+      <div class="ends"><span>1 · Not great</span><span>10 · Loving it</span></div></fieldset></div>
+
+    <div class="q"><div class="q-head"><span class="num">02</span><label class="t" for="win">What's your biggest win in these 8 weeks?</label></div>
+      <p class="hint">Scale, mirror, energy, strength, sleep, confidence. Anything counts.</p>
+      <textarea id="win" placeholder="e.g. Down 4kg and I'm not crashing at 3pm anymore"></textarea></div>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">03</span><span>What's been the hardest part?</span></span></legend>
+      <p class="hint">Pick all that apply.</p>
+      <div class="chips" data-group="hard" data-multi>
+        <label class="chip"><input type="checkbox" id="hard1" value="Sticking to the diet"><span>Sticking to the diet</span></label>
+        <label class="chip"><input type="checkbox" id="hard2" value="Finding time to train"><span>Finding time to train</span></label>
+        <label class="chip"><input type="checkbox" id="hard3" value="Sleep"><span>Sleep</span></label>
+        <label class="chip"><input type="checkbox" id="hard4" value="Weekends and eating out"><span>Weekends and eating out</span></label>
+        <label class="chip"><input type="checkbox" id="hard5" value="Work stress"><span>Work stress</span></label>
+        <label class="chip"><input type="checkbox" id="hard6" value="Motivation"><span>Motivation</span></label>
+        <label class="chip"><input type="checkbox" id="hard7" value="Daily check-ins"><span>Daily check-ins</span></label>
+      </div>
+      <textarea id="hard_note" placeholder="Tell me more (optional)"></textarea></fieldset></div>
+
+    <h2 class="sec">The plan</h2>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">04</span><span>How do the workouts feel right now?</span></span></legend>
+      <div class="chips" data-group="training">
+        <label class="chip"><input type="radio" name="training" id="tr1" value="Too easy"><span>Too easy</span></label>
+        <label class="chip"><input type="radio" name="training" id="tr2" value="Just right"><span>Just right</span></label>
+        <label class="chip"><input type="radio" name="training" id="tr3" value="Too hard"><span>Too hard</span></label>
+        <label class="chip"><input type="radio" name="training" id="tr4" value="Getting boring"><span>Getting boring</span></label>
+      </div></fieldset></div>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">05</span><span>How easy is the meal plan to follow?</span></span></legend>
+      <div class="chips" data-group="diet">
+        <label class="chip"><input type="radio" name="diet" id="di1" value="Easy, fits my life"><span>Easy, fits my life</span></label>
+        <label class="chip"><input type="radio" name="diet" id="di2" value="Mostly fine"><span>Mostly fine</span></label>
+        <label class="chip"><input type="radio" name="diet" id="di3" value="Struggling with it"><span>Struggling with it</span></label>
+      </div>
+      <textarea id="diet_note" placeholder="Any meals you're sick of, or foods you want added?"></textarea></fieldset></div>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">06</span><span>How useful are the daily check-ins and weekly calls?</span></span></legend>
+      <div class="chips" data-group="support">
+        <label class="chip"><input type="radio" name="support" id="su1" value="Super useful, keep as is"><span>Super useful, keep as is</span></label>
+        <label class="chip"><input type="radio" name="support" id="su2" value="Useful, could be shorter"><span>Useful, could be shorter</span></label>
+        <label class="chip"><input type="radio" name="support" id="su3" value="Want more contact"><span>Want more contact</span></label>
+        <label class="chip"><input type="radio" name="support" id="su4" value="Feels like a chore"><span>Feels like a chore</span></label>
+      </div></fieldset></div>
+
+    <h2 class="sec">What you want from me</h2>
+
+    <div class="q"><fieldset><legend><span class="q-head"><span class="num">07</span><span>What should I do more of?</span></span></legend>
+      <p class="hint">Pick all that apply.</p>
+      <div class="chips" data-group="more" data-multi>
+        <label class="chip"><input type="checkbox" id="mo1" value="Form checks on your lifts"><span>Form checks on your lifts</span></label>
+        <label class="chip"><input type="checkbox" id="mo2" value="More quick recipes"><span>More quick recipes</span></label>
+        <label class="chip"><input type="checkbox" id="mo3" value="Eating-out guide"><span>Eating-out guide</span></label>
+        <label class="chip"><input type="checkbox" id="mo5" value="Sleep and stress help"><span>Sleep and stress help</span></label>
+        <label class="chip"><input type="checkbox" id="mo6" value="Push me harder"><span>Push me harder</span></label>
+        <label class="chip"><input type="checkbox" id="mo7" value="Faster replies"><span>Faster replies</span></label>
+      </div>
+      <textarea id="more_note" placeholder="Anything else you wish I was doing?"></textarea></fieldset></div>
+
+    <div class="q"><div class="q-head"><span class="num">08</span><label class="t" for="goal">What's the one thing you want to nail in the next 4 weeks?</label></div>
+      <textarea id="goal" placeholder="e.g. See abs in normal lighting, hit a 100kg bench, stop snacking at night"></textarea></div>
+
+    <div class="q"><div class="q-head"><span class="num">09</span><label class="t" for="else">Anything else on your mind?</label></div>
+      <textarea id="else" placeholder="Optional"></textarea></div>
+
+    <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+
+    <button class="btn" type="submit" id="send">Send to Adarsh</button>
+    <p class="err" id="err" hidden>Pick a score for question 01 first, then try again.</p>
+  </form>
+
+  <section class="panel" id="sent" hidden aria-live="polite">
+    <h2>Sent. Thanks.</h2>
+    <p>Adarsh has your answers. We'll go over them on our next call. If something changes before then, you can edit and send again.</p>
+    <div class="row"><button class="btn ghost" type="button" id="editSent">Edit my answers</button></div>
+  </section>
+
+  <section class="panel" id="out" hidden aria-live="polite">
+    <h2>Copy this and send it to Adarsh</h2>
+    <p id="outMsg">Your answers couldn't be sent. Copy them and paste them into our chat instead.</p>
+    <pre id="txt"></pre>
+    <div class="row">
+      <button class="btn" type="button" id="copy">Copy answers</button>
+      <button class="btn ghost" type="button" id="edit">Edit answers</button>
+      <span class="ok" id="copied" hidden>Copied</span>
+    </div>
+  </section>
+
+  <footer class="coachfoot">
+    <a class="linkbtn" href="/dashboard">Coach dashboard</a>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const sc=document.querySelector('[data-group="rating"]');
+  for(let i=1;i<=10;i++){sc.insertAdjacentHTML('beforeend',`<label class="chip"><input type="radio" name="rating" id="r${i}" value="${i}"><span>${i}</span></label>`)}
+  const f=$('f'),out=$('out'),txt=$('txt'),sent=$('sent');
+  const v=id=>$(id).value.trim();
+  const radio=n=>{const e=f.querySelector(`input[name="${n}"]:checked`);return e?e.value:''};
+  const multi=g=>[...f.querySelectorAll(`[data-group="${g}"] input:checked`)].map(e=>e.value);
+
+  function collect(){
+    return {name:v('name'),rating:Number(radio('rating'))||0,win:v('win'),
+      hard:multi('hard'),hard_note:v('hard_note'),training:radio('training'),
+      diet:radio('diet'),diet_note:v('diet_note'),support:radio('support'),
+      more:multi('more'),more_note:v('more_note'),goal:v('goal'),else_:v('else')};
+  }
+  function asText(d){
+    const line=(q,a)=>a?`${q}\n${a}\n`:'';
+    const join=(...p)=>p.flat().filter(Boolean).join('. ');
+    return [`WEEK 8 CHECK-IN${d.name?' · '+d.name:''}`,'',
+      line('Overall score:',d.rating?d.rating+'/10':''),
+      line('Biggest win:',d.win),
+      line('Hardest part:',join(d.hard.join(', '),d.hard_note)),
+      line('Workouts feel:',d.training),
+      line('Meal plan:',join(d.diet,d.diet_note)),
+      line('Check-ins and calls:',d.support),
+      line('Do more of:',join(d.more.join(', '),d.more_note)),
+      line('Goal for the next 4 weeks:',d.goal),
+      line('Anything else:',d.else_)
+    ].join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  f.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const d=collect();
+    $('err').hidden=!!d.rating;
+    if(!d.rating){$('r1').focus();return}
+    const btn=$('send');btn.disabled=true;btn.textContent='Sending…';
+    try{
+      const res=await fetch('/api/checkins',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({answers:d,website:$('website').value})});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      f.hidden=true;out.hidden=true;sent.hidden=false;
+      sent.scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(err){
+      txt.textContent=asText(d);f.hidden=true;sent.hidden=true;out.hidden=false;
+      out.scrollIntoView({behavior:'smooth',block:'start'});
+    }finally{btn.disabled=false;btn.textContent='Send to Adarsh'}
+  });
+  $('copy').addEventListener('click',()=>{
+    const ok=$('copied');
+    const sel=()=>{const r=document.createRange();r.selectNodeContents(txt);const s=getSelection();s.removeAllRanges();s.addRange(r);ok.textContent='Text selected, copy it manually';ok.hidden=false};
+    try{navigator.clipboard.writeText(txt.textContent).then(()=>{ok.textContent='Copied';ok.hidden=false},sel)}catch(e){sel()}
+  });
+  const back=()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('copied').hidden=true;window.scrollTo({top:0})};
+  $('edit').addEventListener('click',back);
+  $('editSent').addEventListener('click',back);
+})();
+</script>
+</body>
+</html>
