@@ -97,9 +97,8 @@
   </form>
 
   <section class="panel" id="sent" hidden aria-live="polite">
-    <h2>Sent. Thanks.</h2>
-    <p>Adarsh has your answers. We'll go over them on our next call. If something changes before then, you can edit and send again.</p>
-    <div class="row"><button class="btn ghost" type="button" id="editSent">Edit my answers</button></div>
+    <h2>Your check-in is submitted</h2>
+    <p>Thanks for being honest. Coach Adarsh will go through your answers and get back to you soon.</p>
   </section>
 
   <section class="panel" id="out" hidden aria-live="polite">
@@ -174,7 +173,6 @@
   });
   const back=()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('copied').hidden=true;window.scrollTo({top:0})};
   $('edit').addEventListener('click',back);
-  $('editSent').addEventListener('click',back);
 })();
 </script>
 </body>

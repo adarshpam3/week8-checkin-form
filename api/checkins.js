@@ -1,10 +1,16 @@
 const crypto = require('crypto');
 const { Redis } = require('@upstash/redis');
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
-});
+// Vercel may add a prefix when a database is connected to a second project
+// (e.g. STORAGE_KV_REST_API_URL), so accept any name ending the usual way.
+function findEnv(suffixes) {
+  for (const s of suffixes) if (process.env[s]) return process.env[s];
+  const name = Object.keys(process.env).find((k) => suffixes.some((s) => k.endsWith('_' + s)));
+  return name ? process.env[name] : '';
+}
+const REDIS_URL = findEnv(['UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL']);
+const REDIS_TOKEN = findEnv(['UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN']);
+const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
 
 // Kept apart from the onboarding form's keys, so both can share one database.
 const INDEX_KEY = 'checkin8_index';
@@ -20,6 +26,10 @@ const OPTIONS = {
 const TEXT_FIELDS = ['name', 'win', 'hard_note', 'diet_note', 'more_note', 'goal', 'else_'];
 
 module.exports = async (req, res) => {
+  if (!redis) {
+    console.error('Redis is not configured: no KV_REST_API_URL / KV_REST_API_TOKEN (or UPSTASH_*) env vars found');
+    return res.status(503).json({ error: 'Database not connected', reason: 'missing_database_settings' });
+  }
   if (req.method === 'POST') return handleSubmit(req, res);
   if (req.method === 'GET') return handleList(req, res);
   if (req.method === 'DELETE') return handleDelete(req, res);
@@ -70,7 +80,8 @@ async function handleSubmit(req, res) {
     await redis.zadd(INDEX_KEY, { score: timestamp, member: KEY_PREFIX + id });
     return res.status(200).json({ success: true });
   } catch (e) {
-    return res.status(500).json({ error: 'Failed to save check-in' });
+    console.error("Save failed:", e && e.message);
+    return res.status(500).json({ error: "Failed to save check-in" });
   }
 }
 
