@@ -1,20 +1,13 @@
 /* Layout: clients get a single narrow logbook column (the form). The coach gets a wider dashboard: KPI strip, tally charts, then every response. */
 :root{
-  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#16201E; --muted:#5B6764; --line:#D7DEDB;
-  --accent:#0F6B66; --accent-soft:#DCEDEB; --on-accent:#FFFFFF;
-  --warn:#A24A12; --warn-soft:#FBE9DC;
-  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --bg:#FFFFFF; --surface:#FFFFFF; --ink:#0A0A0A; --muted:#5E5E5E; --line:#E3E3E3; --line-strong:#0A0A0A;
+  --accent:#0A0A0A; --accent-soft:#F4F4F4; --on-accent:#FFFFFF;
+  --warn:#B42318; --warn-soft:#FDECEA;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0F1514; --surface:#161E1D; --ink:#E6ECEA; --muted:#93A19D; --line:#2A3634;
-  --accent:#4FC2B8; --accent-soft:#1C3532; --on-accent:#06201E;
-  --warn:#F0A672; --warn-soft:#3A2416; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0F1514; --surface:#161E1D; --ink:#E6ECEA; --muted:#93A19D; --line:#2A3634;
-  --accent:#4FC2B8; --accent-soft:#1C3532; --on-accent:#06201E;
-  --warn:#F0A672; --warn-soft:#3A2416; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 img{max-width:100%}
@@ -150,3 +143,51 @@ a.linkbtn{text-decoration:none}
 .sign{margin:0;color:var(--muted)}
 .sign span{font-family:var(--display);font-weight:700;font-size:22px;text-transform:uppercase;color:var(--ink);letter-spacing:.03em}
 @media (prefers-reduced-motion:reduce){.tick circle,.tick path{animation:none;stroke-dashoffset:0}}
+
+/* ===== Black and white editorial theme ===== */
+body{-webkit-font-smoothing:antialiased}
+.eyebrow{color:var(--ink);font:500 11px var(--body);letter-spacing:.22em}
+h1{font-weight:800;letter-spacing:-.015em;line-height:.92}
+.lede{color:var(--muted)}
+.sec{font:800 24px var(--display);color:var(--ink);letter-spacing:-.005em;margin-top:28px;padding-top:18px;border-top:2px solid var(--ink)}
+.secintro{color:var(--muted)}
+.q{border-radius:0;border:1px solid var(--line);padding:22px}
+.q:focus-within{border-color:var(--ink)}
+.num{color:var(--ink);font-weight:500;letter-spacing:.06em}
+.q label.t,.q legend{font-weight:600}
+input[type=text],input[type=email],input[type=password],textarea{border-radius:0;background:#FAFAFA;border-color:var(--line)}
+input[type=text]:focus,textarea:focus{background:#fff;border-color:var(--ink)}
+input:focus-visible,textarea:focus-visible{outline:none}
+.chip span{border-radius:0;background:#fff;border-color:#CFCFCF;transition:background .12s,border-color .12s}
+.chip:hover span{border-color:var(--ink)}
+.chip input:checked + span{background:var(--ink);border-color:var(--ink);color:#fff}
+.scale .chip span{border-radius:0}
+.btn{border-radius:0;font:600 13px var(--body);letter-spacing:.16em;text-transform:uppercase;padding:18px 22px}
+.btn.ghost{border-color:var(--ink);color:var(--ink)}
+.btn.sm{font-size:11px;padding:10px 14px}
+.btn.danger{color:var(--warn);border-color:var(--warn)}
+#send::after{content:"  →"}
+.panel{border-radius:0;background:var(--accent-soft);border:1px solid var(--line)}
+.notice{border-radius:0;background:var(--accent-soft);border-left:3px solid var(--ink)}
+.linkbtn{border-radius:0;letter-spacing:.18em;font-size:11px}
+.coachfoot{border-top:2px solid var(--ink)}
+.err{color:var(--warn)}
+
+/* Thank-you screen */
+.tick{stroke:var(--ink)}
+.focus{border-radius:0;background:var(--ink);color:#fff}
+.focus p{font-weight:800;letter-spacing:-.005em}
+.next{border-radius:0;border-color:var(--ink)}
+.next li::before{color:var(--ink);font-weight:500}
+.quote{border-left-color:var(--ink);font-weight:800;letter-spacing:-.005em}
+.sign span{font-weight:800}
+
+/* Dashboard */
+.kpi,.card,.r,.empty,.seg{border-radius:0}
+.kpi .v{font-weight:800}
+.card h3{font-weight:800;font-size:18px}
+.listhead h2{font-weight:800}
+.score{border-radius:0;font-weight:800;background:var(--accent-soft)}
+.flag,.pill{border-radius:0}
+.bars .tr,.bars .tr i,.cols .c i{border-radius:0}
+.quote{font-size:22px;line-height:1.12}
