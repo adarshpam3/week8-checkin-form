@@ -31,10 +31,6 @@
     <h1 id="doneTitle">Thank you</h1>
     <p class="donelede" id="doneMsg"></p>
 
-    <div class="focus" id="focusBox" hidden>
-      <span class="k">Your focus until the next check-in</span>
-      <p id="focusText"></p>
-    </div>
 
     <ol class="next">
       <li><span><b>I'll get back to you soon</b> with what I noticed and what we change.</span></li>
@@ -204,7 +200,6 @@
     $('doneMsg').textContent=rough
       ?"Being this honest when things haven't gone to plan takes guts. Falling off isn't failing. Coming back is the whole game, and you just took the first step."
       :"You've been putting in the work, and it shows. Being honest about what's hard is how we keep this going for the long run.";
-    if(d.goal){$('focusText').textContent=d.goal;$('focusBox').hidden=false}
     $('intro').hidden=true;$('prog').hidden=true;f.hidden=true;out.hidden=true;sent.hidden=false;
     window.scrollTo({top:0,behavior:'smooth'});
   }
