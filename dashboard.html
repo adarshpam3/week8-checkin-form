@@ -98,7 +98,7 @@
     $('dashSub').textContent='Loading…';
     try{
       const data=await api('GET');
-      rows=(data.checkins||[]).map(c=>({...c.answers,id:c.id,submittedAt:c.submittedAt}));
+      rows=(data.checkins||[]).map(c=>({...c.answers,id:c.id,submittedAt:c.submittedAt,review:c.review||null}));
       renderDash();return true;
     }catch(e){
       if(e.unauth){lock("That passcode isn't right.");return false}
@@ -182,6 +182,26 @@
       CHOICE.map(q=>`<div class="card"><h3>${esc(q.short)}</h3><ul class="bars">${bars(q,n)}</ul></div>`).join('');
     renderList();
   }
+  function reviewHtml(r){
+    const rv=r.review;
+    if(!rv)return `<div class="review" data-rid="${esc(r.id)}">
+        <div class="rvhead"><h4>Coach review</h4></div>
+        <p class="muted">Claude reads this check-in like a coach and writes a message you can send. You can edit it before you copy it.</p>
+        <div class="row"><button class="btn sm" type="button" data-write>Write review</button><span class="ok" hidden></span></div>
+      </div>`;
+    return `<div class="review" data-rid="${esc(r.id)}">
+        <div class="rvhead"><h4>Coach review</h4><span class="pill">${rv.editedAt?'Edited '+esc(fmtDate(rv.editedAt)):'Written '+esc(fmtDate(rv.createdAt))}</span></div>
+        <label class="rvlab" for="rv-${esc(r.id)}">Message to ${esc(r.name||'client')}</label>
+        <textarea id="rv-${esc(r.id)}" class="rvmsg" data-msg>${esc(rv.message)}</textarea>
+        <div class="row">
+          <button class="btn sm" type="button" data-copyrv>Copy message</button>
+          <button class="btn sm ghost" type="button" data-save hidden>Save edits</button>
+          <button class="btn sm ghost" type="button" data-write>Rewrite</button>
+          <span class="ok" hidden></span>
+        </div>
+        ${rv.notes?`<div class="rvnotes"><h5>Only for you</h5><p>${esc(rv.notes)}</p></div>`:''}
+      </div>`;
+  }
   function renderList(){
     const open=new Set([...document.querySelectorAll('#list details[open]')].map(d=>d.dataset.id));
     const shown=rows.filter(r=>filter==='all'||flagsOf(r).length);
@@ -198,9 +218,10 @@
           <span class="who"><strong>${esc(nameOf(r))}</strong>
             <span class="meta">${esc([r.on_track,r.goal?'Goal: '+r.goal:''].filter(Boolean).join(' · ')||'No details')}</span>
             ${fl.length?`<span class="flags">${fl.map(x=>`<span class="flag">${esc(x)}</span>`).join('')}</span>`:''}</span>
-          <span class="pill">${esc(fmtDate(r.submittedAt))}</span>
+          <span class="pills">${r.review?'<span class="pill done">Reviewed</span>':''}<span class="pill">${esc(fmtDate(r.submittedAt))}</span></span>
         </summary>
         <dl>${body}</dl>
+        ${reviewHtml(r)}
         <div class="acts row">
           <button class="btn sm ghost" type="button" data-copy="${esc(r.id)}">Copy as text</button>
           <button class="btn sm ghost danger" type="button" data-del="${esc(r.id)}">Delete</button>
@@ -223,6 +244,50 @@
       catch(err){if(err.unauth)lock("That passcode isn't right.");else{d.disabled=false;d.textContent="Couldn't delete. Try again"}}
     }
   });
+  /* ---------- coach review ---------- */
+  async function reviewApi(method,id,body){
+    const res=await fetch('/api/review?id='+encodeURIComponent(id),{method,headers:{'x-coach-passcode':passcode,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+    if(res.status===401){const e=new Error('unauthorized');e.unauth=true;throw e}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.reason==='missing_api_key'?'Reviews need your Claude API key added in Vercel first.':(data.error||"Couldn't write the review. Try again."));
+    return data;
+  }
+  const say=(box,msg)=>{const ok=box.querySelector('.ok');ok.textContent=msg;ok.hidden=!msg};
+  $('list').addEventListener('click',async e=>{
+    const box=e.target.closest('.review');if(!box)return;
+    const id=box.dataset.rid,r=rows.find(x=>x.id===id);if(!r)return;
+    const w=e.target.closest('[data-write]'),cp=e.target.closest('[data-copyrv]'),sv=e.target.closest('[data-save]');
+    if(w){
+      if(r.review&&w.dataset.confirm!=='1'){w.dataset.confirm='1';w.textContent='Replace it? Click again';return}
+      box.querySelectorAll('button').forEach(b=>b.disabled=true);
+      w.textContent='Writing…';say(box,'Reading every answer. This takes about 30–60 seconds.');
+      try{const d=await reviewApi('POST',id);r.review=d.review;renderList()}
+      catch(err){
+        if(err.unauth)return lock("That passcode isn't right.");
+        box.querySelectorAll('button').forEach(b=>b.disabled=false);
+        w.dataset.confirm='';w.textContent=r.review?'Rewrite':'Write review';say(box,err.message);
+      }
+    }
+    if(cp){
+      const t=box.querySelector('[data-msg]').value;
+      try{navigator.clipboard.writeText(t).then(()=>say(box,'Copied. Paste it into WhatsApp or Instagram.'),()=>say(box,"Couldn't copy"))}catch(err){say(box,"Couldn't copy")}
+    }
+    if(sv){
+      sv.disabled=true;sv.textContent='Saving…';
+      try{const d=await reviewApi('PUT',id,{message:box.querySelector('[data-msg]').value});r.review=d.review;sv.hidden=true;say(box,'Saved')}
+      catch(err){if(err.unauth)return lock("That passcode isn't right.");say(box,err.message)}
+      finally{sv.disabled=false;sv.textContent='Save edits'}
+    }
+  });
+  $('list').addEventListener('input',e=>{
+    const t=e.target.closest('[data-msg]');if(!t)return;
+    const box=t.closest('.review');box.querySelector('[data-save]').hidden=false;say(box,'');
+    t.style.height='auto';t.style.height=t.scrollHeight+'px';
+  });
+  $('list').addEventListener('toggle',e=>{
+    if(e.target.open)e.target.querySelectorAll('[data-msg]').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'});
+  },true);
+
   const setFilter=x=>{filter=x;$('fAll').setAttribute('aria-pressed',x==='all');$('fAttn').setAttribute('aria-pressed',x==='attn');renderList()};
   $('fAll').addEventListener('click',()=>setFilter('all'));
   $('fAttn').addEventListener('click',()=>setFilter('attn'));

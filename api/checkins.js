@@ -1,21 +1,5 @@
 const crypto = require('crypto');
-const { Redis } = require('@upstash/redis');
-
-// Vercel may add a prefix when a database is connected to a second project
-// (e.g. STORAGE_KV_REST_API_URL), so accept any name ending the usual way.
-function findEnv(suffixes) {
-  for (const s of suffixes) if (process.env[s]) return process.env[s];
-  const name = Object.keys(process.env).find((k) => suffixes.some((s) => k.endsWith('_' + s)));
-  return name ? process.env[name] : '';
-}
-const REDIS_URL = findEnv(['UPSTASH_REDIS_REST_URL', 'KV_REST_API_URL']);
-const REDIS_TOKEN = findEnv(['UPSTASH_REDIS_REST_TOKEN', 'KV_REST_API_TOKEN']);
-const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
-
-// Kept apart from the onboarding form's keys, so both can share one database.
-const INDEX_KEY = 'checkin8_index';
-const KEY_PREFIX = 'checkin8:';
-
+const { redis, isCoach, parse, INDEX_KEY, KEY_PREFIX, ID_RE } = require('../lib/store.js');
 const { QUESTIONS } = require('../questions.js');
 
 module.exports = async (req, res) => {
@@ -29,15 +13,6 @@ module.exports = async (req, res) => {
   res.setHeader('Allow', 'GET, POST, DELETE');
   return res.status(405).json({ error: 'Method not allowed' });
 };
-
-function isCoach(req) {
-  const given = String(req.headers['x-coach-passcode'] || '');
-  const real = String(process.env.COACH_PASSCODE || '');
-  if (!given || !real) return false;
-  const a = crypto.createHash('sha256').update(given).digest();
-  const b = crypto.createHash('sha256').update(real).digest();
-  return crypto.timingSafeEqual(a, b);
-}
 
 // Only keep known questions, known options, and sensible lengths.
 function clean(input) {
@@ -90,13 +65,7 @@ async function handleList(req, res) {
     if (!keys || keys.length === 0) return res.status(200).json({ checkins: [] });
     const values = await redis.mget(...keys);
     const checkins = values
-      .map((raw) => {
-        try {
-          return typeof raw === 'string' ? JSON.parse(raw) : raw;
-        } catch (e) {
-          return null;
-        }
-      })
+      .map(parse)
       .filter(Boolean);
     return res.status(200).json({ checkins });
   } catch (e) {
@@ -107,7 +76,7 @@ async function handleList(req, res) {
 async function handleDelete(req, res) {
   if (!isCoach(req)) return res.status(401).json({ error: 'Unauthorized' });
   const id = String((req.query && req.query.id) || '');
-  if (!/^\d+-[a-f0-9]{8}$/.test(id)) return res.status(400).json({ error: 'Bad id' });
+  if (!ID_RE.test(id)) return res.status(400).json({ error: 'Bad id' });
   try {
     await redis.del(KEY_PREFIX + id);
     await redis.zrem(INDEX_KEY, KEY_PREFIX + id);
