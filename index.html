@@ -14,9 +14,14 @@
   <header id="intro">
     <div class="eyebrow">Coaching check-in · with Adarsh</div>
     <h1>How's it really going?</h1>
-    <p class="lede">This is your check-in. I want the real picture, not the good-week version: what's working, what keeps pulling you off track, and what you need from me. Takes about 10 minutes. The more honest and detailed you are, the better I can coach you.</p>
+    <p class="lede">This is your check-in. I want the real picture, not the good-week version: what's working, what keeps pulling you off track, and what you need from me. Takes about 10 minutes, in 6 short steps. Only the 1–10 score is required, so skip anything that doesn't apply. The more honest and detailed you are, the better I can coach you.</p>
     <p class="notice" id="draftNote" hidden>Welcome back. Your answers from last time were saved on this device, so you can carry on where you left off.</p>
   </header>
+
+  <div class="progress" id="prog" role="status" aria-live="polite">
+    <div class="ptop"><span id="pStep"></span><span class="saved" id="pSaved" hidden>Saved</span></div>
+    <div class="ptrack" aria-hidden="true"><i id="pFill"></i></div>
+  </div>
 
   <form id="f" novalidate></form>
 
@@ -68,7 +73,8 @@
   /* ---------- build the form from questions.js ---------- */
   let n=0;
   const num=()=>String(n++).padStart(2,'0');
-  const head=(q,forId)=>`<span class="q-head"><span class="num">${num()}</span>${forId?`<label class="t" for="${forId}">${esc(q.label)}</label>`:`<span>${esc(q.label)}</span>`}</span>`;
+  const req=q=>q.required?' <span class="req">Required</span>':'';
+  const head=(q,forId)=>`<span class="q-head"><span class="num">${num()}</span>${forId?`<label class="t" for="${forId}">${esc(q.label)}${req(q)}</label>`:`<span>${esc(q.label)}${req(q)}</span>`}</span>`;
   const hint=q=>q.hint?`<p class="hint">${esc(q.hint)}</p>`:'';
   const note=q=>q.note?`<textarea id="${q.note.id}" placeholder="${esc(q.note.placeholder||'Tell me more (optional)')}"></textarea>`:'';
   function block(q){
@@ -82,12 +88,56 @@
     const chips=q.options.map((o,i)=>`<label class="chip"><input type="${multi?'checkbox':'radio'}" name="${q.id}" id="${q.id}_${i}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('');
     return `<div class="q"><fieldset><legend>${head(q)}</legend>${hint(q)}<div class="chips">${chips}</div>${note(q)}</fieldset></div>`;
   }
-  f.innerHTML=SECTIONS.map(s=>`<h2 class="sec">${esc(s.title)}</h2>${s.intro?`<p class="secintro">${esc(s.intro)}</p>`:''}${s.qs.map(block).join('')}`).join('')+
-    `<div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
-     <button class="btn" type="submit" id="send">Send to Adarsh</button>
-     <p class="err" id="err" hidden></p>`;
-  // The first heading sits right under the page title, so it doesn't need the extra gap.
-  f.querySelector('.sec').style.marginTop='0';
+  // Steps: one section per screen. A tiny section (like "About you") joins the next one.
+  const STEPS=[];
+  for(let i=0;i<SECTIONS.length;i++){
+    const group=[SECTIONS[i]];
+    if(SECTIONS[i].qs.length<2&&SECTIONS[i+1])group.push(SECTIONS[++i]);
+    STEPS.push({title:group[0].title,sections:group});
+  }
+  const last=STEPS.length-1;
+  f.innerHTML=STEPS.map((st,i)=>`<div class="step" data-step="${i}"${i?' hidden':''}>
+      ${st.sections.map(s=>`<h2 class="sec">${esc(s.title)}</h2>${s.intro?`<p class="secintro">${esc(s.intro)}</p>`:''}${s.qs.map(block).join('')}`).join('')}
+      <p class="err" data-err hidden></p>
+      <div class="stepnav">
+        ${i?'<button class="btn ghost" type="button" data-back>Back</button>':'<span></span>'}
+        ${i<last?'<button class="btn" type="submit" data-next>Next</button>':'<button class="btn" type="submit" id="send">Send to Adarsh</button>'}
+      </div>
+    </div>`).join('')+
+    `<div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>`;
+
+  /* ---------- step navigation ---------- */
+  let step=0;
+  const STEP_KEY='checkinStep';
+  function show(i,scroll){
+    step=Math.max(0,Math.min(last,i));
+    f.querySelectorAll('.step').forEach(el=>{el.hidden=Number(el.dataset.step)!==step});
+    $('intro').hidden=step>0;
+    $('pStep').textContent=`Step ${step+1} of ${STEPS.length} · ${STEPS[step].title}`;
+    $('pFill').style.width=((step+1)/STEPS.length*100)+'%';
+    try{localStorage.setItem(STEP_KEY,String(step))}catch(e){}
+    if(scroll)window.scrollTo({top:0,behavior:'smooth'});
+    growAll();
+  }
+  function stepOk(){
+    const el=f.querySelector(`.step[data-step="${step}"]`);
+    const ids=STEPS[step].sections.flatMap(s=>s.qs).filter(q=>q.required);
+    const d=collect();
+    const missing=ids.find(q=>!d[q.id]);
+    const err=el.querySelector('[data-err]');
+    if(!missing){err.hidden=true;return true}
+    err.textContent=`Pick a score for "${missing.label}" to carry on.`;err.hidden=false;
+    const first=f.querySelector(`input[name="${missing.id}"]`)||$(missing.id);
+    first.closest('.q').scrollIntoView({behavior:'smooth',block:'center'});first.focus({preventScroll:true});
+    return false;
+  }
+  f.addEventListener('click',e=>{if(e.target.closest('[data-back]'))show(step-1,true)});
+  f.addEventListener('change',()=>{const el=f.querySelector(`.step[data-step="${step}"] [data-err]`);if(el&&!el.hidden)stepOk()});
+
+  /* ---------- write-in boxes grow as people type ---------- */
+  const grow=t=>{t.style.height='auto';t.style.height=Math.max(t.scrollHeight+2,92)+'px'};
+  const growAll=()=>f.querySelectorAll('.step:not([hidden]) textarea').forEach(grow);
+  f.addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA')grow(e.target)});
 
   /* ---------- read / write answers ---------- */
   function collect(){
@@ -129,12 +179,23 @@
   const draft={
     get(){try{return JSON.parse(localStorage.getItem(DRAFT)||'null')}catch(e){return null}},
     set(d){try{localStorage.setItem(DRAFT,JSON.stringify(d))}catch(e){}},
-    clear(){try{localStorage.removeItem(DRAFT)}catch(e){}}
+    clear(){try{localStorage.removeItem(DRAFT);localStorage.removeItem(STEP_KEY)}catch(e){}}
   };
+  let savedTimer;
+  function save(){
+    draft.set(collect());
+    const el=$('pSaved');el.hidden=false;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  }
   const saved=draft.get();
-  if(saved&&typeof saved==='object'){fill(saved);$('draftNote').hidden=false}
-  let t;f.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>draft.set(collect()),400)});
-  f.addEventListener('change',()=>draft.set(collect()));
+  let startStep=0;
+  if(saved&&typeof saved==='object'){
+    fill(saved);$('draftNote').hidden=false;$('pSaved').hidden=false;
+    try{startStep=Number(localStorage.getItem(STEP_KEY))||0}catch(e){}
+  }
+  show(startStep,false);
+  if(startStep>0)$('draftNote').hidden=true;
+  let t;f.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(save,400)});
+  f.addEventListener('change',save);
 
   /* ---------- thank-you screen, tuned to how their weeks have been ---------- */
   function showDone(d){
@@ -144,7 +205,7 @@
       ?"Being this honest when things haven't gone to plan takes guts. Falling off isn't failing. Coming back is the whole game, and you just took the first step."
       :"You've been putting in the work, and it shows. Being honest about what's hard is how we keep this going for the long run.";
     if(d.goal){$('focusText').textContent=d.goal;$('focusBox').hidden=false}
-    $('intro').hidden=true;f.hidden=true;out.hidden=true;sent.hidden=false;
+    $('intro').hidden=true;$('prog').hidden=true;f.hidden=true;out.hidden=true;sent.hidden=false;
     window.scrollTo({top:0,behavior:'smooth'});
   }
 
@@ -152,16 +213,14 @@
   const required=QUESTIONS.filter(q=>q.required);
   f.addEventListener('submit',async e=>{
     e.preventDefault();
+    if(!stepOk())return;
+    if(step<last){show(step+1,true);return}
     const d=collect();
     const missing=required.find(q=>!d[q.id]);
-    const err=$('err');
     if(missing){
-      err.textContent=`Please answer "${missing.label}" first, then try again.`;err.hidden=false;
-      const first=f.querySelector(`input[name="${missing.id}"]`)||$(missing.id);
-      first.closest('.q').scrollIntoView({behavior:'smooth',block:'center'});first.focus({preventScroll:true});
-      return;
+      const at=STEPS.findIndex(st=>st.sections.some(s=>s.qs.includes(missing)));
+      show(at,true);setTimeout(stepOk,300);return;
     }
-    err.hidden=true;
     const btn=$('send');btn.disabled=true;btn.textContent='Sending…';
     try{
       const res=await fetch('/api/checkins',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -170,7 +229,7 @@
       draft.clear();
       showDone(d);
     }catch(err){
-      txt.textContent=asText(d);f.hidden=true;sent.hidden=true;out.hidden=false;
+      txt.textContent=asText(d);f.hidden=true;$('prog').hidden=true;sent.hidden=true;out.hidden=false;
       out.scrollIntoView({behavior:'smooth',block:'start'});
     }finally{btn.disabled=false;btn.textContent='Send to Adarsh'}
   });
@@ -179,7 +238,7 @@
     const sel=()=>{const r=document.createRange();r.selectNodeContents(txt);const s=getSelection();s.removeAllRanges();s.addRange(r);ok.textContent='Text selected, copy it manually';ok.hidden=false};
     try{navigator.clipboard.writeText(txt.textContent).then(()=>{ok.textContent='Copied';ok.hidden=false},sel)}catch(e){sel()}
   });
-  $('edit').addEventListener('click',()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('intro').hidden=false;$('copied').hidden=true;window.scrollTo({top:0})});
+  $('edit').addEventListener('click',()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('prog').hidden=false;$('copied').hidden=true;show(step,true)});
 })();
 </script>
 </body>

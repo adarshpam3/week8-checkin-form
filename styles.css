@@ -191,3 +191,22 @@ input:focus-visible,textarea:focus-visible{outline:none}
 .flag,.pill{border-radius:0}
 .bars .tr,.bars .tr i,.cols .c i{border-radius:0}
 .quote{font-size:22px;line-height:1.12}
+
+/* Steps + progress */
+.progress{position:sticky;top:0;z-index:5;background:var(--bg);margin:-8px -16px 0;padding:12px 16px 10px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line)}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:12px;font:600 11px var(--body);letter-spacing:.16em;text-transform:uppercase}
+.ptrack{height:4px;background:var(--line)}
+.ptrack i{display:block;height:100%;width:0;background:var(--ink);transition:width .35s ease}
+.saved{font:500 11px var(--mono);letter-spacing:.06em;text-transform:none;color:var(--muted);white-space:nowrap}
+.saved::before{content:"✓ "}
+.saved.pop{animation:pop 1.6s ease}
+@keyframes pop{0%{color:var(--ink)}100%{color:var(--muted)}}
+.step{display:flex;flex-direction:column;gap:14px}
+.step > .sec:first-child{margin-top:0}
+.stepnav{display:flex;justify-content:space-between;gap:10px;margin-top:8px}
+.stepnav .btn{flex:1;max-width:240px}
+.stepnav .btn:only-child,.stepnav span + .btn{margin-left:auto}
+[data-next]::after{content:"  →"}
+.req{display:inline-block;margin-left:8px;vertical-align:2px;font:600 10px var(--body);letter-spacing:.14em;text-transform:uppercase;border:1px solid var(--ink);padding:2px 6px}
+textarea{overflow:hidden;resize:none;min-height:92px}
+@media (prefers-reduced-motion:reduce){.ptrack i{transition:none}.saved.pop{animation:none}}
