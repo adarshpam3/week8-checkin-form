@@ -1,6 +1,3 @@
 {
-  "cleanUrls": true,
-  "functions": {
-    "api/review.js": { "maxDuration": 120 }
-  }
+  "cleanUrls": true
 }

@@ -75,6 +75,7 @@
 </div>
 
 <script src="/questions.js"></script>
+<script src="/review-prompt.js"></script>
 <script>
 (function(){
   const {SECTIONS,QUESTIONS}=window.CHECKIN;
@@ -183,20 +184,28 @@
     renderList();
   }
   function reviewHtml(r){
-    const rv=r.review;
-    if(!rv)return `<div class="review" data-rid="${esc(r.id)}">
+    const rv=r.review,id=esc(r.id),who=esc(r.name||'client');
+    const paste=`<div class="rvstep"><span class="num">1</span><div>
+          <p>Copy the review prompt and ${who}'s answers, then paste them into ChatGPT.</p>
+          <div class="row"><button class="btn sm" type="button" data-gpt>Copy for ChatGPT</button>
+          <a class="btn sm ghost" href="https://chatgpt.com/" target="_blank" rel="noopener" style="text-decoration:none">Open ChatGPT</a></div></div></div>
+        <div class="rvstep"><span class="num">2</span><div>
+          <label for="rp-${id}">Paste ChatGPT's whole reply here</label>
+          <textarea id="rp-${id}" class="rvpaste" data-paste placeholder="### Message to client&#10;Hey…&#10;&#10;### Coach notes&#10;Risk level…"></textarea>
+          <div class="row"><button class="btn sm" type="button" data-savepaste>Save review</button>${rv?'<button class="btn sm ghost" type="button" data-cancel>Cancel</button>':''}</div></div></div>`;
+    if(!rv||r._redo)return `<div class="review" data-rid="${id}">
         <div class="rvhead"><h4>Coach review</h4></div>
-        <p class="muted">Claude reads this check-in like a coach and writes a message you can send. You can edit it before you copy it.</p>
-        <div class="row"><button class="btn sm" type="button" data-write>Write review</button><span class="ok" hidden></span></div>
+        ${paste}
+        <div class="row"><span class="ok" hidden></span></div>
       </div>`;
-    return `<div class="review" data-rid="${esc(r.id)}">
-        <div class="rvhead"><h4>Coach review</h4><span class="pill">${rv.editedAt?'Edited '+esc(fmtDate(rv.editedAt)):'Written '+esc(fmtDate(rv.createdAt))}</span></div>
-        <label class="rvlab" for="rv-${esc(r.id)}">Message to ${esc(r.name||'client')}</label>
-        <textarea id="rv-${esc(r.id)}" class="rvmsg" data-msg>${esc(rv.message)}</textarea>
+    return `<div class="review" data-rid="${id}">
+        <div class="rvhead"><h4>Coach review</h4><span class="pill">Saved ${esc(fmtDate(rv.savedAt||rv.editedAt||rv.createdAt))}</span></div>
+        <label class="rvlab" for="rv-${id}">Message to ${who}</label>
+        <textarea id="rv-${id}" class="rvmsg" data-msg>${esc(rv.message)}</textarea>
         <div class="row">
           <button class="btn sm" type="button" data-copyrv>Copy message</button>
           <button class="btn sm ghost" type="button" data-save hidden>Save edits</button>
-          <button class="btn sm ghost" type="button" data-write>Rewrite</button>
+          <button class="btn sm ghost" type="button" data-redo>New review</button>
           <span class="ok" hidden></span>
         </div>
         ${rv.notes?`<div class="rvnotes"><h5>Only for you</h5><p>${esc(rv.notes)}</p></div>`:''}
@@ -244,39 +253,49 @@
       catch(err){if(err.unauth)lock("That passcode isn't right.");else{d.disabled=false;d.textContent="Couldn't delete. Try again"}}
     }
   });
-  /* ---------- coach review ---------- */
-  async function reviewApi(method,id,body){
-    const res=await fetch('/api/review?id='+encodeURIComponent(id),{method,headers:{'x-coach-passcode':passcode,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  /* ---------- coach review (written in ChatGPT, pasted back here) ---------- */
+  async function saveReview(id,body){
+    const res=await fetch('/api/review?id='+encodeURIComponent(id),{method:'PUT',headers:{'x-coach-passcode':passcode,'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(res.status===401){const e=new Error('unauthorized');e.unauth=true;throw e}
     const data=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(data.reason==='missing_api_key'?'Reviews need your Claude API key added in Vercel first.':(data.error||"Couldn't write the review. Try again."));
-    return data;
+    if(!res.ok)throw new Error(data.error||"Couldn't save. Try again.");
+    return data.review;
+  }
+  // Everything ChatGPT needs in one paste: the review instructions, then the client's answers.
+  function promptFor(r){
+    const lines=[];
+    for(const s of SECTIONS){
+      const items=s.qs.map(q=>{const a=answerOf(r,q);return a?`Q: ${q.label}\nA: ${a}`:''}).filter(Boolean);
+      if(items.length)lines.push(`## ${s.title}`,...items,'');
+    }
+    return `${window.REVIEW_PROMPT}\n\n---\n\nHere is the client's check-in (submitted ${fmtDate(r.submittedAt)}):\n\n${lines.join('\n').trim()}`;
+  }
+  // Split ChatGPT's reply into the message for the client and the private coach notes.
+  function splitReply(text){
+    const t=text.trim();
+    const head=/^[#*\s]*message to client[*:\s]*$/im, notes=/^[#*\s]*coach notes[*:\s]*$/im;
+    const n=t.search(notes);
+    let msg=n>=0?t.slice(0,n):t, nt=n>=0?t.slice(n).replace(notes,''):'';
+    msg=msg.replace(head,'');
+    return {message:msg.trim(),notes:nt.trim()};
   }
   const say=(box,msg)=>{const ok=box.querySelector('.ok');ok.textContent=msg;ok.hidden=!msg};
+  const copy=(box,text,done)=>{try{navigator.clipboard.writeText(text).then(()=>say(box,done),()=>say(box,"Couldn't copy"))}catch(err){say(box,"Couldn't copy")}};
   $('list').addEventListener('click',async e=>{
     const box=e.target.closest('.review');if(!box)return;
     const id=box.dataset.rid,r=rows.find(x=>x.id===id);if(!r)return;
-    const w=e.target.closest('[data-write]'),cp=e.target.closest('[data-copyrv]'),sv=e.target.closest('[data-save]');
-    if(w){
-      if(r.review&&w.dataset.confirm!=='1'){w.dataset.confirm='1';w.textContent='Replace it? Click again';return}
-      box.querySelectorAll('button').forEach(b=>b.disabled=true);
-      w.textContent='Writing…';say(box,'Reading every answer. This takes about 30–60 seconds.');
-      try{const d=await reviewApi('POST',id);r.review=d.review;renderList()}
-      catch(err){
-        if(err.unauth)return lock("That passcode isn't right.");
-        box.querySelectorAll('button').forEach(b=>b.disabled=false);
-        w.dataset.confirm='';w.textContent=r.review?'Rewrite':'Write review';say(box,err.message);
-      }
-    }
-    if(cp){
-      const t=box.querySelector('[data-msg]').value;
-      try{navigator.clipboard.writeText(t).then(()=>say(box,'Copied. Paste it into WhatsApp or Instagram.'),()=>say(box,"Couldn't copy"))}catch(err){say(box,"Couldn't copy")}
-    }
-    if(sv){
-      sv.disabled=true;sv.textContent='Saving…';
-      try{const d=await reviewApi('PUT',id,{message:box.querySelector('[data-msg]').value});r.review=d.review;sv.hidden=true;say(box,'Saved')}
-      catch(err){if(err.unauth)return lock("That passcode isn't right.");say(box,err.message)}
-      finally{sv.disabled=false;sv.textContent='Save edits'}
+    const btn=e.target.closest('button');if(!btn)return;
+    if(btn.matches('[data-gpt]'))copy(box,promptFor(r),'Copied. Paste it into ChatGPT, then paste the reply in step 2.');
+    if(btn.matches('[data-copyrv]'))copy(box,box.querySelector('[data-msg]').value,'Copied. Paste it into WhatsApp or Instagram.');
+    if(btn.matches('[data-redo]')){r._redo=true;renderList()}
+    if(btn.matches('[data-cancel]')){r._redo=false;renderList()}
+    if(btn.matches('[data-savepaste],[data-save]')){
+      const fromPaste=btn.matches('[data-savepaste]');
+      const body=fromPaste?splitReply(box.querySelector('[data-paste]').value):{message:box.querySelector('[data-msg]').value};
+      if(!body.message){say(box,"Paste ChatGPT's reply first.");return}
+      btn.disabled=true;btn.textContent='Saving…';
+      try{r.review=await saveReview(id,body);r._redo=false;renderList()}
+      catch(err){if(err.unauth)return lock("That passcode isn't right.");say(box,err.message);btn.disabled=false;btn.textContent=fromPaste?'Save review':'Save edits'}
     }
   });
   $('list').addEventListener('input',e=>{
