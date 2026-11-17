@@ -129,3 +129,24 @@ a.linkbtn{text-decoration:none}
 /* Chips: no box when tapped or clicked; keyboard users still get a rounded outline that hugs the pill. */
 .chip input:focus-visible{outline:none}
 .chip input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Thank-you screen */
+.done{display:flex;flex-direction:column;gap:18px;padding-top:12px}
+.done h1{font-size:clamp(44px,11vw,72px)}
+.donelede{font-size:18px;margin:0;max-width:52ch}
+.tick{width:64px;height:64px;fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.tick circle{stroke-dasharray:151;stroke-dashoffset:151;animation:draw .6s ease-out forwards}
+.tick path{stroke-width:3.5;stroke-dasharray:36;stroke-dashoffset:36;animation:draw .35s .5s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.focus{background:var(--accent);color:var(--on-accent);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.focus .k{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.focus p{margin:0;font-family:var(--display);font-weight:700;font-size:28px;line-height:1.1;text-transform:uppercase;overflow-wrap:anywhere}
+.next{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:0;counter-reset:n;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.next li{counter-increment:n;display:grid;grid-template-columns:32px 1fr;gap:12px;padding:16px 18px;border-top:1px solid var(--line);color:var(--muted)}
+.next li:first-child{border-top:0}
+.next li::before{content:"0" counter(n);font:500 13px var(--mono);color:var(--accent);padding-top:3px}
+.next li b{color:var(--ink);font-weight:600}
+.quote{margin:8px 0 0;padding:4px 0 4px 18px;border-left:3px solid var(--accent);font-family:var(--display);font-weight:600;font-size:26px;line-height:1.15;text-transform:uppercase;letter-spacing:.01em}
+.sign{margin:0;color:var(--muted)}
+.sign span{font-family:var(--display);font-weight:700;font-size:22px;text-transform:uppercase;color:var(--ink);letter-spacing:.03em}
+@media (prefers-reduced-motion:reduce){.tick circle,.tick path{animation:none;stroke-dashoffset:0}}

@@ -11,7 +11,7 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header id="intro">
     <div class="eyebrow">Coaching check-in · with Adarsh</div>
     <h1>How's it really going?</h1>
     <p class="lede">This is your check-in. I want the real picture, not the good-week version: what's working, what keeps pulling you off track, and what you need from me. Takes about 10 minutes. The more honest and detailed you are, the better I can coach you.</p>
@@ -20,9 +20,25 @@
 
   <form id="f" novalidate></form>
 
-  <section class="panel" id="sent" hidden aria-live="polite">
-    <h2>Your check-in is submitted</h2>
-    <p>Thanks for being honest. Coach Adarsh will go through your answers and get back to you soon.</p>
+  <section class="done" id="sent" hidden aria-live="polite">
+    <svg class="tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>
+    <div class="eyebrow">Check-in received</div>
+    <h1 id="doneTitle">That's the hard part done.</h1>
+    <p class="donelede" id="doneMsg"></p>
+
+    <div class="focus" id="focusBox" hidden>
+      <span class="k">Your focus until the next check-in</span>
+      <p id="focusText"></p>
+    </div>
+
+    <ol class="next">
+      <li><span><b>I read every answer myself.</b> Not a bot, not a template. Me.</span></li>
+      <li><span><b>I'll get back to you soon</b> with what I noticed and what we change.</span></li>
+      <li><span><b>We adjust the plan together</b>, built around your real life, not a perfect week.</span></li>
+    </ol>
+
+    <blockquote class="quote">You don't need a perfect week. You need to keep showing up, especially after the bad ones.</blockquote>
+    <p class="sign">Proud of you for doing this. Talk soon.<br><span>Coach Adarsh</span></p>
   </section>
 
   <section class="panel" id="out" hidden aria-live="polite">
@@ -121,6 +137,19 @@
   let t;f.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>draft.set(collect()),400)});
   f.addEventListener('change',()=>draft.set(collect()));
 
+  /* ---------- thank-you screen, tuned to how their weeks have been ---------- */
+  function showDone(d){
+    const first=(d.name||'').split(/\s+/)[0];
+    const rough=['Up and down','Fallen off','Just getting back on'].includes(d.on_track)||['A bit lower','A lot lower'].includes(d.motivation);
+    $('doneTitle').textContent=first?`Thank you, ${first}.`:"That's the hard part done.";
+    $('doneMsg').textContent=rough
+      ?"Being this honest when things haven't gone to plan takes guts. Falling off isn't failing. Coming back is the whole game, and you just took the first step."
+      :"You've been putting in the work, and it shows. Being honest about what's hard is how we keep this going for the long run.";
+    if(d.goal){$('focusText').textContent=d.goal;$('focusBox').hidden=false}
+    $('intro').hidden=true;f.hidden=true;out.hidden=true;sent.hidden=false;
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
   /* ---------- send ---------- */
   const required=QUESTIONS.filter(q=>q.required);
   f.addEventListener('submit',async e=>{
@@ -141,8 +170,7 @@
         body:JSON.stringify({answers:d,website:$('website').value})});
       if(!res.ok)throw new Error('HTTP '+res.status);
       draft.clear();
-      f.hidden=true;out.hidden=true;sent.hidden=false;$('draftNote').hidden=true;
-      sent.scrollIntoView({behavior:'smooth',block:'start'});
+      showDone(d);
     }catch(err){
       txt.textContent=asText(d);f.hidden=true;sent.hidden=true;out.hidden=false;
       out.scrollIntoView({behavior:'smooth',block:'start'});
@@ -153,7 +181,7 @@
     const sel=()=>{const r=document.createRange();r.selectNodeContents(txt);const s=getSelection();s.removeAllRanges();s.addRange(r);ok.textContent='Text selected, copy it manually';ok.hidden=false};
     try{navigator.clipboard.writeText(txt.textContent).then(()=>{ok.textContent='Copied';ok.hidden=false},sel)}catch(e){sel()}
   });
-  $('edit').addEventListener('click',()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('copied').hidden=true;window.scrollTo({top:0})});
+  $('edit').addEventListener('click',()=>{out.hidden=true;sent.hidden=true;f.hidden=false;$('intro').hidden=false;$('copied').hidden=true;window.scrollTo({top:0})});
 })();
 </script>
 </body>
