@@ -196,7 +196,7 @@
         <summary>
           <span class="score${r.rating&&r.rating<7?' low':''}" aria-label="Happiness ${r.rating||'not given'} of 10">${r.rating||'–'}</span>
           <span class="who"><strong>${esc(nameOf(r))}</strong>
-            <span class="meta">${esc([r.duration,r.on_track,r.goal?'Goal: '+r.goal:''].filter(Boolean).join(' · ')||'No details')}</span>
+            <span class="meta">${esc([r.on_track,r.goal?'Goal: '+r.goal:''].filter(Boolean).join(' · ')||'No details')}</span>
             ${fl.length?`<span class="flags">${fl.map(x=>`<span class="flag">${esc(x)}</span>`).join('')}</span>`:''}</span>
           <span class="pill">${esc(fmtDate(r.submittedAt))}</span>
         </summary>

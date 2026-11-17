@@ -9,11 +9,6 @@
       title: 'About you',
       qs: [
         { id: 'name', type: 'text', label: 'Your name', placeholder: 'First name', short: 'Name' },
-        {
-          id: 'duration', type: 'one', short: 'Coaching for',
-          label: 'How long have you been coaching with me?',
-          options: ['Under a month', '1–2 months', '2–3 months', '3–4 months', '4–6 months', '6+ months'],
-        },
       ],
     },
     {
