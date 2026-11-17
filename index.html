@@ -23,7 +23,7 @@
   <section class="done" id="sent" hidden aria-live="polite">
     <svg class="tick" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>
     <div class="eyebrow">Check-in received</div>
-    <h1 id="doneTitle">That's the hard part done.</h1>
+    <h1 id="doneTitle">Thank you</h1>
     <p class="donelede" id="doneMsg"></p>
 
     <div class="focus" id="focusBox" hidden>
@@ -138,9 +138,8 @@
 
   /* ---------- thank-you screen, tuned to how their weeks have been ---------- */
   function showDone(d){
-    const first=(d.name||'').split(/\s+/)[0];
     const rough=['Up and down','Fallen off','Just getting back on'].includes(d.on_track)||['A bit lower','A lot lower'].includes(d.motivation);
-    $('doneTitle').textContent=first?`Thank you, ${first}.`:"That's the hard part done.";
+    $('doneTitle').textContent=d.name?`Thank you ${d.name}`:'Thank you';
     $('doneMsg').textContent=rough
       ?"Being this honest when things haven't gone to plan takes guts. Falling off isn't failing. Coming back is the whole game, and you just took the first step."
       :"You've been putting in the work, and it shows. Being honest about what's hard is how we keep this going for the long run.";
