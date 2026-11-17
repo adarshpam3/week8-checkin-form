@@ -16,14 +16,7 @@ const redis = REDIS_URL && REDIS_TOKEN ? new Redis({ url: REDIS_URL, token: REDI
 const INDEX_KEY = 'checkin8_index';
 const KEY_PREFIX = 'checkin8:';
 
-const OPTIONS = {
-  hard: ['Sticking to the diet', 'Finding time to train', 'Sleep', 'Weekends and eating out', 'Work stress', 'Motivation', 'Daily check-ins'],
-  training: ['Too easy', 'Just right', 'Too hard', 'Getting boring'],
-  diet: ['Easy, fits my life', 'Mostly fine', 'Struggling with it'],
-  support: ['Super useful, keep as is', 'Useful, could be shorter', 'Want more contact', 'Feels like a chore'],
-  more: ['Form checks on your lifts', 'More quick recipes', 'Eating-out guide', 'Sleep and stress help', 'Push me harder', 'Faster replies'],
-};
-const TEXT_FIELDS = ['name', 'win', 'hard_note', 'diet_note', 'more_note', 'goal', 'else_'];
+const { QUESTIONS } = require('../questions.js');
 
 module.exports = async (req, res) => {
   if (!redis) {
@@ -46,20 +39,25 @@ function isCoach(req) {
   return crypto.timingSafeEqual(a, b);
 }
 
-// Only keep known fields, known options, and sensible lengths.
+// Only keep known questions, known options, and sensible lengths.
 function clean(input) {
   const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
-  const one = (v, list) => (list.includes(v) ? v : '');
-  const many = (v, list) => (Array.isArray(v) ? [...new Set(v.filter((x) => list.includes(x)))] : []);
-  const rating = Number(input.rating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 10) return null;
-  const out = { rating };
-  for (const f of TEXT_FIELDS) out[f] = text(input[f], f === 'name' ? 120 : 4000);
-  out.hard = many(input.hard, OPTIONS.hard);
-  out.more = many(input.more, OPTIONS.more);
-  out.training = one(input.training, OPTIONS.training);
-  out.diet = one(input.diet, OPTIONS.diet);
-  out.support = one(input.support, OPTIONS.support);
+  const out = {};
+  for (const q of QUESTIONS) {
+    const v = input[q.id];
+    if (q.type === 'scale') {
+      const n = Number(v);
+      out[q.id] = Number.isInteger(n) && n >= 1 && n <= 10 ? n : 0;
+      if (q.required && !out[q.id]) return null;
+    } else if (q.type === 'one') {
+      out[q.id] = q.options.includes(v) ? v : '';
+    } else if (q.type === 'many') {
+      out[q.id] = Array.isArray(v) ? [...new Set(v.filter((x) => q.options.includes(x)))] : [];
+    } else {
+      out[q.id] = text(v, q.id === 'name' ? 120 : 4000);
+    }
+    if (q.note) out[q.note.id] = text(input[q.note.id], 4000);
+  }
   return out;
 }
 

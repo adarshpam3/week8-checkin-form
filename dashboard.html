@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Week 8 Coach Dashboard</title>
+<title>Coach Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="/styles.css">
@@ -14,7 +14,7 @@
 <!-- ============ PASSCODE ============ -->
 <div class="wrap" id="lockView">
   <header>
-    <div class="eyebrow">Coach dashboard · Week 8</div>
+    <div class="eyebrow">Coach dashboard</div>
     <h1>Coach access</h1>
     <p class="lede">Enter your coach passcode to see your clients' check-ins.</p>
   </header>
@@ -34,8 +34,8 @@
 <!-- ============ DASHBOARD ============ -->
 <div class="wrap wide" id="dashView" hidden>
   <header>
-    <div class="eyebrow">Coach dashboard · Week 8</div>
-    <h1>Week 8 check-ins</h1>
+    <div class="eyebrow">Coach dashboard</div>
+    <h1>Client check-ins</h1>
     <div class="row" style="justify-content:space-between">
       <p class="lede" id="dashSub">Loading…</p>
       <div class="row">
@@ -52,23 +52,14 @@
   </div>
 
   <div id="dashBody" hidden style="display:flex;flex-direction:column;gap:28px">
-    <div class="kpis">
+    <div class="kpis four">
       <div class="kpi"><span class="k">Responses</span><span class="v" id="kN">0</span><span class="s">check-ins received</span></div>
       <div class="kpi"><span class="k">Avg happiness</span><span class="v" id="kAvg">–</span><span class="s">out of 10</span></div>
+      <div class="kpi"><span class="k">Avg confidence</span><span class="v" id="kConf">–</span><span class="s">out of 10, reaching their goal</span></div>
       <div class="kpi attn"><span class="k">Need a follow-up</span><span class="v" id="kAttn">0</span><span class="s">low score or a red flag</span></div>
     </div>
 
-    <div class="grid2">
-      <div class="card"><h3>Happiness score</h3>
-        <div class="cols" id="chScore" role="img" aria-label="Count of clients per score from 1 to 10"></div>
-        <div class="colx" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
-      </div>
-      <div class="card"><h3>Hardest part</h3><ul class="bars" id="chHard"></ul></div>
-      <div class="card"><h3>Do more of</h3><ul class="bars" id="chMore"></ul></div>
-      <div class="card"><h3>Workouts feel</h3><ul class="bars" id="chTraining"></ul></div>
-      <div class="card"><h3>Meal plan</h3><ul class="bars" id="chDiet"></ul></div>
-      <div class="card"><h3>Check-ins and calls</h3><ul class="bars" id="chSupport"></ul></div>
-    </div>
+    <div class="grid2" id="charts"></div>
 
     <section style="display:flex;flex-direction:column;gap:14px">
       <div class="listhead">
@@ -83,17 +74,12 @@
   </div>
 </div>
 
+<script src="/questions.js"></script>
 <script>
 (function(){
+  const {SECTIONS,QUESTIONS}=window.CHECKIN;
   const $=id=>document.getElementById(id);
-  const OPTS={
-    hard:["Sticking to the diet","Finding time to train","Sleep","Weekends and eating out","Work stress","Motivation","Daily check-ins"],
-    training:["Too easy","Just right","Too hard","Getting boring"],
-    diet:["Easy, fits my life","Mostly fine","Struggling with it"],
-    support:["Super useful, keep as is","Useful, could be shorter","Want more contact","Feels like a chore"],
-    more:["Form checks on your lifts","More quick recipes","Eating-out guide","Sleep and stress help","Push me harder","Faster replies"]
-  };
-  const WARN_OPTS=new Set(["Too hard","Getting boring","Struggling with it","Feels like a chore"]);
+  const CHOICE=QUESTIONS.filter(q=>q.type==='one'||q.type==='many');
   let passcode='',rows=[],filter='all';
 
   const store={
@@ -128,7 +114,6 @@
     $('lockView').hidden=true;$('dashView').hidden=false;window.scrollTo({top:0});
     if(await load())store.set(code);
   }
-
   $('lockForm').addEventListener('submit',async e=>{
     e.preventDefault();
     const code=$('pw').value;
@@ -139,58 +124,62 @@
   $('lockDash').addEventListener('click',()=>lock(''));
   $('refresh').addEventListener('click',load);
 
-  /* ---------- render ---------- */
+  /* ---------- helpers ---------- */
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const flagsOf=r=>{
-    const f=[];
-    if(r.rating&&r.rating<=6)f.push('Score '+r.rating+'/10');
-    [r.training,r.diet,r.support].forEach(x=>{if(WARN_OPTS.has(x))f.push(x)});
-    return f;
-  };
   const nameOf=r=>r.name||'Unnamed client';
   const fmtDate=iso=>{try{return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
-  function asText(d){
-    const line=(q,a)=>a?`${q}\n${a}\n`:'';
-    const join=(...p)=>p.flat().filter(Boolean).join('. ');
-    return [`WEEK 8 CHECK-IN · ${nameOf(d)}`,'',
-      line('Overall score:',d.rating?d.rating+'/10':''),
-      line('Biggest win:',d.win),
-      line('Hardest part:',join((d.hard||[]).join(', '),d.hard_note)),
-      line('Workouts feel:',d.training),
-      line('Meal plan:',join(d.diet,d.diet_note)),
-      line('Check-ins and calls:',d.support),
-      line('Do more of:',join((d.more||[]).join(', '),d.more_note)),
-      line('Goal for the next 4 weeks:',d.goal),
-      line('Anything else:',d.else_)
-    ].join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  // The answer to one question as plain text, including its optional note.
+  function answerOf(r,q){
+    let a=r[q.id];
+    if(q.type==='scale')a=a?a+'/10':'';
+    if(Array.isArray(a))a=a.join(', ');
+    return [a,q.note?r[q.note.id]:''].filter(Boolean).join('. ');
   }
-  function bars(el,opts,counts,total){
-    el.innerHTML=opts.map(o=>{
-      const n=counts[o]||0,pct=total?Math.round(n/total*100):0;
-      return `<li title="${esc(o)}: ${n} of ${total} (${pct}%)"><span class="lab">${esc(o)}</span><span class="n">${n}</span><span class="tr"><i class="${WARN_OPTS.has(o)?'w':''}" style="width:${pct}%"></i></span></li>`;
+  function flagsOf(r){
+    const f=[];
+    for(const q of QUESTIONS){
+      const v=r[q.id];
+      if(q.type==='scale'&&q.warnBelow&&v&&v<q.warnBelow)f.push(`${q.short} ${v}/10`);
+      if(q.warn){const hit=(Array.isArray(v)?v:[v]).filter(x=>q.warn.includes(x));if(hit.length)f.push(`${q.short}: ${hit.join(', ')}`)}
+    }
+    return f;
+  }
+  const avg=k=>{const v=rows.map(r=>r[k]).filter(x=>x>=1);return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'–'};
+  function asText(r){
+    const lines=[`CHECK-IN · ${nameOf(r)} · ${fmtDate(r.submittedAt)}`,''];
+    for(const q of QUESTIONS){if(q.id==='name')continue;const a=answerOf(r,q);if(a)lines.push(q.label,a,'')}
+    return lines.join('\n').trim();
+  }
+
+  /* ---------- render ---------- */
+  function bars(q,total){
+    const c={};rows.forEach(r=>{const v=r[q.id];(Array.isArray(v)?v:[v]).forEach(x=>{if(x)c[x]=(c[x]||0)+1})});
+    // Pick-any lists are sorted by how often each is picked, so the biggest problems sit on top.
+    const opts=q.type==='many'?[...q.options].sort((a,b)=>(c[b]||0)-(c[a]||0)):q.options;
+    return opts.map(o=>{
+      const n=c[o]||0,pct=total?Math.round(n/total*100):0;
+      return `<li title="${esc(o)}: ${n} of ${total} (${pct}%)"><span class="lab">${esc(o)}</span><span class="n">${n}</span><span class="tr"><i class="${(q.warn||[]).includes(o)?'w':''}" style="width:${pct}%"></i></span></li>`;
     }).join('');
   }
-  function tally(key){const c={};rows.forEach(r=>{const v=r[key];(Array.isArray(v)?v:[v]).forEach(x=>{if(x)c[x]=(c[x]||0)+1})});return c}
-
+  function scoreCols(key,warnBelow){
+    const sc=Array(11).fill(0);rows.forEach(r=>{if(r[key]>=1&&r[key]<=10)sc[r[key]]++});
+    const max=Math.max(1,...sc.slice(1));
+    return `<div class="cols" role="img" aria-label="Count of clients per score from 1 to 10">${sc.slice(1).map((c,i)=>{
+      const h=c/max*100,s=i+1;
+      return `<div class="c" title="Score ${s}: ${c} client${c===1?'':'s'}"><i class="${c?(s<warnBelow?'low':''):'zero'}" style="height:${h}%"></i>${c?`<b style="bottom:calc(${h}% + 4px)">${c}</b>`:''}</div>`;
+    }).join('')}</div><div class="colx" aria-hidden="true">${[1,2,3,4,5,6,7,8,9,10].map(x=>`<span>${x}</span>`).join('')}</div>`;
+  }
   function renderDash(){
     const n=rows.length;
     $('dashEmpty').hidden=n>0;$('dashBody').hidden=n===0;$('exportCsv').hidden=n===0;
     if(!n){$('dashSub').textContent='No check-ins yet.';return}
     $('dashSub').textContent=`${n} check-in${n===1?'':'s'} · latest ${fmtDate(rows[0].submittedAt)}`;
-    $('kN').textContent=n;
-    $('kAvg').textContent=(rows.reduce((s,r)=>s+(r.rating||0),0)/n).toFixed(1);
+    $('kN').textContent=n;$('kAvg').textContent=avg('rating');$('kConf').textContent=avg('confidence');
     $('kAttn').textContent=rows.filter(r=>flagsOf(r).length).length;
-    const sc=Array(11).fill(0);rows.forEach(r=>{if(r.rating>=1&&r.rating<=10)sc[r.rating]++});
-    const max=Math.max(1,...sc.slice(1));
-    $('chScore').innerHTML=sc.slice(1).map((c,i)=>{
-      const h=c/max*100,s=i+1;
-      return `<div class="c" title="Score ${s}: ${c} client${c===1?'':'s'}"><i class="${c?(s<=6?'low':''):'zero'}" style="height:${h}%"></i>${c?`<b style="bottom:calc(${h}% + 4px)">${c}</b>`:''}</div>`;
-    }).join('');
-    bars($('chHard'),OPTS.hard,tally('hard'),n);
-    bars($('chMore'),OPTS.more,tally('more'),n);
-    bars($('chTraining'),OPTS.training,tally('training'),n);
-    bars($('chDiet'),OPTS.diet,tally('diet'),n);
-    bars($('chSupport'),OPTS.support,tally('support'),n);
+    const scales=QUESTIONS.filter(q=>q.type==='scale');
+    $('charts').innerHTML=
+      scales.map(q=>`<div class="card"><h3>${esc(q.short)}</h3>${scoreCols(q.id,q.warnBelow||0)}</div>`).join('')+
+      CHOICE.map(q=>`<div class="card"><h3>${esc(q.short)}</h3><ul class="bars">${bars(q,n)}</ul></div>`).join('');
     renderList();
   }
   function renderList(){
@@ -199,26 +188,19 @@
     if(!shown.length){$('list').innerHTML='<p class="muted" style="margin:0">Nobody needs a follow-up right now.</p>';return}
     $('list').innerHTML=shown.map(r=>{
       const fl=flagsOf(r);
-      const field=(k,val)=>val?`<dt>${k}</dt><dd>${esc(val)}</dd>`:'';
-      const j=(...p)=>p.flat().filter(Boolean).join('. ');
+      const body=SECTIONS.map(s=>{
+        const items=s.qs.filter(q=>q.id!=='name').map(q=>{const a=answerOf(r,q);return a?`<dt>${esc(q.short)}</dt><dd>${esc(a)}</dd>`:''}).join('');
+        return items?`<dt class="dsec">${esc(s.title)}</dt>${items}`:'';
+      }).join('');
       return `<details class="r" data-id="${esc(r.id)}"${open.has(r.id)?' open':''}>
         <summary>
-          <span class="score${r.rating<=6?' low':''}" aria-label="Score ${r.rating} of 10">${r.rating||'–'}</span>
+          <span class="score${r.rating&&r.rating<7?' low':''}" aria-label="Happiness ${r.rating||'not given'} of 10">${r.rating||'–'}</span>
           <span class="who"><strong>${esc(nameOf(r))}</strong>
-            <span class="meta">${esc(r.goal?'Goal: '+r.goal:'No goal given')}</span>
+            <span class="meta">${esc([r.duration,r.on_track,r.goal?'Goal: '+r.goal:''].filter(Boolean).join(' · ')||'No details')}</span>
             ${fl.length?`<span class="flags">${fl.map(x=>`<span class="flag">${esc(x)}</span>`).join('')}</span>`:''}</span>
           <span class="pill">${esc(fmtDate(r.submittedAt))}</span>
         </summary>
-        <dl>
-          ${field('Biggest win',r.win)}
-          ${field('Hardest part',j((r.hard||[]).join(', '),r.hard_note))}
-          ${field('Workouts feel',r.training)}
-          ${field('Meal plan',j(r.diet,r.diet_note))}
-          ${field('Check-ins and calls',r.support)}
-          ${field('Do more of',j((r.more||[]).join(', '),r.more_note))}
-          ${field('Goal for next 4 weeks',r.goal)}
-          ${field('Anything else',r.else_)}
-        </dl>
+        <dl>${body}</dl>
         <div class="acts row">
           <button class="btn sm ghost" type="button" data-copy="${esc(r.id)}">Copy as text</button>
           <button class="btn sm ghost danger" type="button" data-del="${esc(r.id)}">Delete</button>
@@ -246,14 +228,17 @@
   $('fAttn').addEventListener('click',()=>setFilter('attn'));
 
   $('exportCsv').addEventListener('click',()=>{
-    const cols=[['Name',r=>nameOf(r)],['Score',r=>r.rating],['Biggest win',r=>r.win],['Hardest part',r=>(r.hard||[]).join('; ')],['Hardest note',r=>r.hard_note],
-      ['Workouts',r=>r.training],['Meal plan',r=>r.diet],['Meal plan note',r=>r.diet_note],['Check-ins',r=>r.support],['Do more of',r=>(r.more||[]).join('; ')],
-      ['More note',r=>r.more_note],['Goal',r=>r.goal],['Anything else',r=>r.else_],['Submitted',r=>r.submittedAt]];
-    const q=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
-    const csv=[cols.map(c=>q(c[0])).join(',')].concat(rows.map(r=>cols.map(c=>q(c[1](r))).join(','))).join('\r\n');
+    const cols=[['Name',r=>nameOf(r)],['Submitted',r=>r.submittedAt],['Flags',r=>flagsOf(r).join('; ')]];
+    for(const q of QUESTIONS){
+      if(q.id==='name')continue;
+      cols.push([q.short,r=>{const v=r[q.id];return Array.isArray(v)?v.join('; '):(v||'')}]);
+      if(q.note)cols.push([q.short+' (note)',r=>r[q.note.id]]);
+    }
+    const qt=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
+    const csv=[cols.map(c=>qt(c[0])).join(',')].concat(rows.map(r=>cols.map(c=>qt(c[1](r))).join(','))).join('\r\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
-    a.download='week8-checkins.csv';document.body.appendChild(a);a.click();
+    a.download='client-checkins.csv';document.body.appendChild(a);a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
   });
 
